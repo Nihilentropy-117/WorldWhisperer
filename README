@@ -1,0 +1,48 @@
+# World Whisperer
+
+Welcome to World Whisperer! This program helps you manage your notes on a fantasy world, vectorizes them, stores them
+in a Pinecone database, and allows you to interact with the content using ChatGPT. You will need an OpenAI api key,
+and a free Pinecone Vector Database account.
+
+## Setup
+
+1. Rename SampleNotes to Notes
+2. Uncomment the PRIVATE variables in the .env file and add your API keys
+3. Inside each subfolder, create files named after the respective items, with the file extension `.md`.
+Note that only plain text is supported at this time, and markdown formatting is not stripped. It will function, but
+may result in artifacts.
+4. Run the program. It will automatically create a `tags.csv` file, asking ChatGPT to generate a series of tags
+for each item.
+5. Confirm vectorizing the data and storing it in Pinecone when prompted.
+
+## Main Menu
+
+The main menu provides you with three modes of operation:
+
+1. **Interactive Mode**
+2. **Questions Mode**
+3. **Generator Mode**
+
+### 1. Interactive Mode
+
+In this mode, you can interact with the model by providing the following information:
+
+a. **Admin Command**: This is a short description to guide the response.
+        Example: "You are Joe's grandfather telling stories."
+
+b. **Context**: Provide any additional context about the prompt that isn't found in your world notes.
+        Example: "Joe is a huge fan of cheese."
+
+c. **Prompt**: Write the actual question or scenario you want ChatGPT to address.
+        Example: "Tell me about the time Joe went to Italy and got a pizza."
+
+### 2. Questions Mode
+
+This mode allows you to ask questions about the world directly. Just type your question, and it will provide you
+with an answer based on the information stored in the Pinecone database.
+
+### 3. Generator Mode
+
+Generator Mode enables you to create new content for your world, integrating it with existing information.
+This can be used to expand your world's lore, create new characters, or develop new locations and artifacts.
+In progress is the ability to generate entire worlds of interconnected things from a basic prompt.

@@ -1,0 +1,1 @@
+There is always necromancer in tower to west, supernatural force that ensures someone does job. 

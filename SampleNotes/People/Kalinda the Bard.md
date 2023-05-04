@@ -1,0 +1,1 @@
+Kalinda the Bard is the enigmatic keeper of the Solarium of Whispers. 

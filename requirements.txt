@@ -1,0 +1,5 @@
+python-dotenv~=1.0.0
+openai~=0.27.6
+tiktoken~=0.3.3
+pandas~=2.0.1
+tqdm~=4.65.0
