@@ -1,19 +1,37 @@
 import os
-import openai
 import chromadb
 from chromadb.config import Settings
 from tqdm.auto import tqdm
-from time import sleep
+from sentence_transformers import SentenceTransformer
+from typing import List
 
 
 def remove_non_ascii(text):
     return ''.join(char for char in text if ord(char) < 128)
 
 
+# Initialize local embedding model (loaded once, reused across calls)
+_embedding_model = None
+
+def get_embedding_model():
+    """Lazy-load the embedding model to avoid multiple initializations"""
+    global _embedding_model
+    if _embedding_model is None:
+        model_name = os.getenv('local_embed_model', 'all-MiniLM-L6-v2')
+        print(f"Loading local embedding model: {model_name}")
+        _embedding_model = SentenceTransformer(model_name)
+    return _embedding_model
+
+
+def create_embeddings(texts: List[str]) -> List[List[float]]:
+    """Create embeddings using local sentence-transformers model"""
+    model = get_embedding_model()
+    embeddings = model.encode(texts, show_progress_bar=False, convert_to_numpy=True)
+    return embeddings.tolist()
+
+
 def upsert_chromadb(data):
-    # Load environment variables for API keys and configuration
-    embed_model = os.getenv('openai_embed_model')
-    openai.api_key = os.getenv('openai_api_key')
+    # Load environment variables for configuration
     collection_name = os.getenv('chromadb_collection_name')
     chromadb_path = os.getenv('chromadb_path', './chromadb')
 
@@ -37,29 +55,6 @@ def upsert_chromadb(data):
 
         # Extract metadata from the batch
         ids_batch = meta_batch['title'].tolist()
-        titles = [f"NAME: {title}" for title in meta_batch['title']]
-        texts = [f"ENTRY: {text}" for text in meta_batch['text']]
-        tags = [f"TAGS: {tag}" for tag in meta_batch['tags']]
-
-        # Prepare input for embedding creation
-        embedding_text = f"{titles}\n{texts}\n{tags}"
-
-        # Create embeddings using OpenAI API with retries for rate limits
-        try:
-            res = openai.Embedding.create(input=embedding_text, engine=embed_model)
-        except:
-            done = False
-            while not done:
-                sleep(5)
-                try:
-                    res = openai.Embedding.create(input=embedding_text, engine=embed_model)
-                    done = True
-                except:
-                    print("OpenAI Timed Out while creating Embeddings")
-                    pass
-
-        # Extract the embeddings from the API response
-        embeds = [record['embedding'] for record in res['data']]
 
         # Prepare the metadata for upserting
         meta_batch_list = [{
@@ -68,14 +63,17 @@ def upsert_chromadb(data):
             'tags': row['tags']
         } for _, row in meta_batch.iterrows()]
 
-        # Convert the IDs to ASCII
-        ascii_ids_batch = [remove_non_ascii(id) for id in ids_batch]
-
-        # Prepare documents (combining title, text, and tags)
+        # Prepare documents for embedding (combining title, text, and tags)
         documents = [
-            f"{meta['title']}: {meta['text']}\n{meta['tags']}"
+            f"NAME: {meta['title']}\nENTRY: {meta['text']}\nTAGS: {meta['tags']}"
             for meta in meta_batch_list
         ]
+
+        # Create embeddings using local model
+        embeds = create_embeddings(documents)
+
+        # Convert the IDs to ASCII
+        ascii_ids_batch = [remove_non_ascii(id) for id in ids_batch]
 
         # Upsert the data into ChromaDB
         collection.upsert(
@@ -86,18 +84,25 @@ def upsert_chromadb(data):
         )
 
 
-def get_chromadb_context(query):
-    # Set keys and environment variables
-    embed_model = os.getenv('openai_embed_model')
-    openai.api_key = os.getenv('openai_api_key')
+def get_chromadb_context(query, mode='question'):
+    """
+    Retrieve relevant context from ChromaDB based on query.
+
+    Args:
+        query: The user's query/prompt
+        mode: 'question' for Q&A or 'generator' for content creation
+
+    Returns:
+        Formatted prompt with context and metadata
+    """
+    # Set environment variables
     collection_name = os.getenv('chromadb_collection_name')
     chromadb_path = os.getenv('chromadb_path', './chromadb')
-    top_k = int(os.getenv('top_k'))
-    context_limit = int(os.getenv("chromadb_context_limit"))
+    top_k = int(os.getenv('top_k', '12'))
+    context_limit = int(os.getenv("chromadb_context_limit", "4000"))
 
-    # Embed query
-    res = openai.Embedding.create(input=[query], engine=embed_model)
-    query_embedding = res['data'][0]['embedding']
+    # Embed query using local model
+    query_embedding = create_embeddings([query])[0]
 
     # Initialize ChromaDB client
     client = chromadb.PersistentClient(path=chromadb_path)
@@ -112,18 +117,43 @@ def get_chromadb_context(query):
         include=['metadatas', 'documents', 'distances']
     )
 
-    # Get contexts from results
+    # Get contexts from results with relevance scores
     contexts = []
+    relevance_data = []
+
     if results['metadatas'] and len(results['metadatas'][0]) > 0:
-        for metadata in results['metadatas'][0]:
-            contexts.append(
-                f"{metadata['title']}: {metadata['text']}\n{metadata['tags']}"
-            )
+        for idx, metadata in enumerate(results['metadatas'][0]):
+            distance = results['distances'][0][idx] if results['distances'] else 1.0
+            relevance_score = 1 - distance  # Convert distance to similarity
 
-    # Build prompt with contexts
-    prompt_start = "Respond to the prompt based on the context below.\n\nContext:\n"
-    prompt_end = f"\n\nPrompt: {query}\nAnswer:"
+            context_text = f"{metadata['title']}: {metadata['text']}\nTags: {metadata['tags']}"
+            contexts.append(context_text)
 
+            relevance_data.append({
+                'title': metadata['title'],
+                'relevance': relevance_score,
+                'tags': metadata['tags']
+            })
+
+    # Build prompt based on mode
+    if mode == 'generator':
+        prompt_start = """Generate new content for this D&D campaign world based on the existing lore below.
+
+IMPORTANT INSTRUCTIONS:
+- Ensure consistency with established lore, themes, and tone
+- Reference specific existing elements when relevant
+- Maintain the world's established rules and constraints
+- Create interconnections with existing content
+- Match the writing style of existing entries
+
+EXISTING LORE CONTEXT:
+"""
+        prompt_end = f"\n\nGENERATION REQUEST: {query}\n\nYOUR RESPONSE:"
+    else:
+        prompt_start = "Answer the question based on the context below.\n\nContext:\n"
+        prompt_end = f"\n\nQuestion: {query}\nAnswer:"
+
+    # Build context with character limit
     prompt = ""
     for i in range(1, len(contexts) + 1):
         current_prompt = "\n\n---\n\n".join(contexts[:i])
@@ -133,4 +163,4 @@ def get_chromadb_context(query):
         elif i == len(contexts):
             prompt = prompt_start + current_prompt + prompt_end
 
-    return prompt
+    return prompt, relevance_data

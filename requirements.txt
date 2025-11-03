@@ -1,6 +1,8 @@
 python-dotenv
-openai
 tiktoken
 pandas
 tqdm
 chromadb
+sentence-transformers
+requests
+torch

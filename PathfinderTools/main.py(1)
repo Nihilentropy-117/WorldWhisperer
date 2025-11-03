@@ -1,0 +1,60 @@
+import re
+import random
+
+def roll_dice(dice_expression):
+    # Split the expression by operators and keep the operators
+    tokens = re.split(r'([+\-*/()])', dice_expression)
+    tokens = [t.strip() for t in tokens if t.strip()]
+
+    # Replace dice expressions with their results
+    for i, token in enumerate(tokens):
+        if 'd' in token:
+            num_dice, dice_value = map(int, token.split('d'))
+            roll_result = sum(random.randint(1, dice_value) for _ in range(num_dice))
+            tokens[i] = str(roll_result)
+
+    # Join the tokens back into a single string and evaluate
+    return eval(''.join(tokens))
+
+
+def menu(options):
+    """
+    Display a list of options with numbers and let the user choose one.
+
+    Args:
+    - options (list): A list of strings representing the options.
+
+    Returns:
+    - str: The chosen option.
+    """
+    # Print the options with numbers
+    for i, option in enumerate(options, 1):
+        print(f"{i}. {option}")
+
+    # Get user's choice
+    while True:
+        try:
+            choice = int(input("Enter the number of your choice: "))
+            if 1 <= choice <= len(options):
+                return options[choice - 1]
+            else:
+                print("Invalid choice. Please choose a number from the list.")
+        except ValueError:
+            print("Please enter a valid number.")
+
+
+# Press the green button in the gutter to run the script.
+if __name__ == '__main__':
+
+    i = True
+    while i is True:
+        choice = menu(["Dice", "Quit"])
+        if choice == "Dice":
+
+            dice_expression = input("Enter the dice expression: ")
+            print(f"Result: {roll_dice(dice_expression)}")
+
+        elif choice == "Quit":
+            i = False
+
+        else: print("Invalid Choice")

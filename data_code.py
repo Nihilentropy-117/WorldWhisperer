@@ -37,8 +37,9 @@ def make_notes_df():
                     tags = gpt_code.gpt4(
                         "You a DnD Dungeon Master AI, master of Vector Databases and Fantasy Lore.",
                         file_contents,
-                        """Create a list of up to 10 tags about this Lore entry, for the purpose of 
-                        training a vector database. Return only the tags, separated by |"""
+                        """Create a list of up to 10 tags about this Lore entry, for the purpose of
+                        training a vector database. Return only the tags, separated by |""",
+                        skip_cost_check=True  # Auto-accept for tag generation
                     )
 
                     tags_dict[title] = tags

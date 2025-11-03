@@ -28,27 +28,53 @@ class MainMenu:
             "1": lambda: call_pine_gpt(
                 input("Admin Command: "),
                 input("Additional Context: "),
-                input("Prompt: ")
+                input("Prompt: "),
+                mode='question'
             ),
             "2": lambda: call_pine_gpt(
                 "You are a DnD dungeon master answering questions about your world.",
                 " ",
-                input("Prompt: ")
+                input("Prompt: "),
+                mode='question'
             ),
             "3": lambda: call_pine_gpt(
-                "You are a DnD dungeon master writing a campaign world.",
+                "You are an expert DnD dungeon master creating rich, interconnected campaign world content.",
                 " ",
-                input("Prompt: ")
+                input("Generation Prompt: "),
+                mode='generator'
             )
         }
         menu_actions.get(user_choice, lambda: None)()
 
 
 # Call ChromaDB GPT with given parameters
-def call_pine_gpt(admin_command=None, additional_context=None, prompt=None):
-    loaded_query = chromadb_code.get_chromadb_context(prompt + "\n" + additional_context)
-    # print(loaded_query)
-    result = gpt_code.gpt4(admin_command, " ", loaded_query)
+def call_pine_gpt(admin_command=None, additional_context=None, prompt=None, mode='question'):
+    """
+    Query ChromaDB and generate response.
+
+    Args:
+        admin_command: System instruction/role
+        additional_context: Additional user-provided context
+        prompt: User's prompt/question
+        mode: 'question' for Q&A, 'generator' for content creation
+    """
+    # Get context from ChromaDB with mode-specific formatting
+    loaded_query, relevance_data = chromadb_code.get_chromadb_context(
+        prompt + "\n" + additional_context,
+        mode=mode
+    )
+
+    # Use enhanced generation for Generator mode
+    if mode == 'generator':
+        result = gpt_code.generate_with_feedback(
+            admin_command,
+            loaded_query,
+            prompt,
+            relevance_data
+        )
+    else:
+        result = gpt_code.gpt4(admin_command, " ", loaded_query)
+
     print(result)
     return result
 
