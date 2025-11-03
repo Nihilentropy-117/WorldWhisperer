@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-import gpt_code
+import llm_code
 
 gpt_override_cost_check = bool(os.getenv('gpt_override_cost_check'))
 
@@ -34,7 +34,7 @@ def make_notes_df():
                 if title not in tags_dict:
                     print(f"New note found.\nCreating tags for {markdown_file}")
                     file_contents = text
-                    tags = gpt_code.gpt4(
+                    tags = gpt_code.llm(
                         "You a DnD Dungeon Master AI, master of Vector Databases and Fantasy Lore.",
                         file_contents,
                         """Create a list of up to 10 tags about this Lore entry, for the purpose of

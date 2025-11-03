@@ -11,22 +11,6 @@ def count_tokens(string: str) -> int:
     return num_tokens
 
 
-def estimate_cost(string: str, model: str) -> float:
-    """
-    Estimate cost for OpenRouter API call.
-    Note: OpenRouter pricing varies by model - this is an estimate.
-    """
-    num_tokens = count_tokens(string)
-    print(f"{num_tokens} tokens")
-
-    # Rough estimate - actual costs vary by model on OpenRouter
-    # Check https://openrouter.ai/models for current pricing
-    token_packages = num_tokens / 1000
-    cost_per_prompt_package = 0.01  # Conservative estimate
-
-    prompt_cost = cost_per_prompt_package * token_packages
-    return prompt_cost
-
 
 def call_openrouter(
     messages: List[Dict[str, str]],
@@ -56,51 +40,27 @@ def call_openrouter(
     )
 
 
-def gpt4(instruction, context, prompt, skip_cost_check=False):
+def llm(instruction, context, prompt):
     """
-    Legacy function name - now uses OpenRouter instead of OpenAI.
-
-    Args:
-        instruction: System instruction/role
-        context: Additional context for the assistant
-        prompt: User prompt
-        skip_cost_check: Skip the cost confirmation if True
-
     Returns:
         Generated response text
     """
     # Get environment variables
-    accept = os.getenv("gpt_override_cost_check", "False").lower() == "true"
     model = os.getenv('openrouter_model', 'anthropic/claude-3.5-sonnet')
 
-    full_text = prompt + instruction + context
+    messages = [
+        {"role": "system", "content": instruction},
+        {"role": "assistant", "content": f"The context provided: \n{context}"},
+        {"role": "user", "content": prompt}
+    ]
 
-    # Calculate estimated cost
-    cost = estimate_cost(full_text, model)
+    try:
+        answer = call_openrouter(messages, model=model)
+        return answer
+    except Exception as e:
+        print(f"Error calling OpenRouter: {e}")
+        return f"Error: {str(e)}"
 
-    # Check if the user accepts
-    cost_accept = accept or skip_cost_check
-
-    if not cost_accept:
-        ask = input(f"Prompt will cost approximately ${cost:.4f} to send. Y/N? ").lower()
-        cost_accept = ask == "y"
-
-    # If the user accepts the cost, send the request
-    if cost_accept:
-        messages = [
-            {"role": "system", "content": instruction},
-            {"role": "assistant", "content": f"The context provided: \n{context}"},
-            {"role": "user", "content": prompt}
-        ]
-
-        try:
-            answer = call_openrouter(messages, model=model)
-            return answer
-        except Exception as e:
-            print(f"Error calling OpenRouter: {e}")
-            return f"Error: {str(e)}"
-    else:
-        return "Declined Charges"
 
 
 def generate_with_feedback(

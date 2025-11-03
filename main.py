@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 # Core modules
 import data_code
-import gpt_code
+import llm_code
 import chromadb_code
 
 # Pathfinder Tools modules
@@ -50,7 +50,7 @@ def call_pine_gpt(admin_command=None, additional_context=None, prompt=None, mode
             relevance_data
         )
     else:
-        result = gpt_code.gpt4(admin_command, " ", loaded_query)
+        result = gpt_code.llm(admin_command, " ", loaded_query)
 
     print("\n" + "="*70)
     print(result)
