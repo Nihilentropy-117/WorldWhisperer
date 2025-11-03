@@ -1,7 +1,7 @@
 import os
-import requests
 import tiktoken
 from typing import Optional, Dict, List
+from openrouter_client import get_client
 
 
 def count_tokens(string: str) -> int:
@@ -36,6 +36,7 @@ def call_openrouter(
 ) -> str:
     """
     Call OpenRouter API with chat messages.
+    Now uses unified OpenRouterClient.
 
     Args:
         messages: List of message dicts with 'role' and 'content'
@@ -46,41 +47,13 @@ def call_openrouter(
     Returns:
         Generated text response
     """
-    api_key = os.getenv('openrouter_api_key')
-    if not api_key:
-        raise ValueError("OPENROUTER_API_KEY not set in environment")
-
-    model = model or os.getenv('openrouter_model', 'anthropic/claude-3.5-sonnet')
-    site_url = os.getenv('openrouter_site_url', 'http://localhost')
-    site_name = os.getenv('openrouter_site_name', 'WorldWhisperer')
-
-    headers = {
-        'Authorization': f'Bearer {api_key}',
-        'HTTP-Referer': site_url,
-        'X-Title': site_name,
-        'Content-Type': 'application/json'
-    }
-
-    payload = {
-        'model': model,
-        'messages': messages,
-        'temperature': temperature
-    }
-
-    if max_tokens:
-        payload['max_tokens'] = max_tokens
-
-    response = requests.post(
-        'https://openrouter.ai/api/v1/chat/completions',
-        headers=headers,
-        json=payload
+    client = get_client()
+    return client.chat_completion(
+        messages=messages,
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens
     )
-
-    if response.status_code != 200:
-        raise Exception(f"OpenRouter API error: {response.status_code} - {response.text}")
-
-    result = response.json()
-    return result['choices'][0]['message']['content']
 
 
 def gpt4(instruction, context, prompt, skip_cost_check=False):
