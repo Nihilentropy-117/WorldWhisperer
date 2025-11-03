@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 import data_code
 import gpt_code
-import pinecone_code
+import chromadb_code
 
 
 # Define MainMenu
@@ -10,9 +10,9 @@ class MainMenu:
     def __init__(self):
         # Menu options and their descriptions
         self.menu_options = {
-            "1": "Call PineconeGPT (Interactive)",
-            "2": "Call PineconeGPT (Questions)",
-            "3": "Call PineconeGPT (Generator)",
+            "1": "Call ChromaDB GPT (Interactive)",
+            "2": "Call ChromaDB GPT (Questions)",
+            "3": "Call ChromaDB GPT (Generator)",
             "X": "Exit"
         }
 
@@ -44,9 +44,9 @@ class MainMenu:
         menu_actions.get(user_choice, lambda: None)()
 
 
-# Call PineconeGPT with given parameters
+# Call ChromaDB GPT with given parameters
 def call_pine_gpt(admin_command=None, additional_context=None, prompt=None):
-    loaded_query = pinecone_code.get_pinecone_context(prompt + "\n" + additional_context)
+    loaded_query = chromadb_code.get_chromadb_context(prompt + "\n" + additional_context)
     # print(loaded_query)
     result = gpt_code.gpt4(admin_command, " ", loaded_query)
     print(result)
@@ -68,13 +68,13 @@ if __name__ == "__main__":
     lore_df = data_code.make_notes_df()
     print("Complete")
 
-    # Update Pinecone if the user chooses to do so
-    update_pinecone = input("Update Pinecone Now? y/n")
-    if update_pinecone == "y":
-        pinecone_code.upsert_pinecone(lore_df)
-        print("Pinecone Updated")
+    # Update ChromaDB if the user chooses to do so
+    update_chromadb = input("Update ChromaDB Now? y/n")
+    if update_chromadb == "y":
+        chromadb_code.upsert_chromadb(lore_df)
+        print("ChromaDB Updated")
     else:
-        print("Pinecone Not Updated")
+        print("ChromaDB Not Updated")
 
     # Run the main menu
     menu = MainMenu()

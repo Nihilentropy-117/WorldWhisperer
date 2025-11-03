@@ -1,9 +1,7 @@
 # World Whisperer
 
 Welcome to World Whisperer! This program helps you manage your notes on a fantasy world, vectorizes them, stores them
-in a Pinecone database, and allows you to interact with the content using ChatGPT. You will need an OpenAI api key,
-and a free Pinecone Vector Database account.
-
+in a  database, and allows you to interact with the content using ChatGPT.
 ## Setup
 
 1. Rename SampleNotes to Notes
